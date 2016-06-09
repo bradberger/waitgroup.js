@@ -20,24 +20,41 @@
 
 (function(){
 var WaitGroup = function(){
-    this.total = 0; // Number of total items
-    this.ready = 0; // Number of items ready
+    this.counter = null;
 };
 
+function WaitGroupException(message) {
+   // Equivalent to 60x/second
+   this.TIMEOUT_DURATION = 16.6667;
+   this.message = message;
+   this.name = "WaitGroupException";
+}
+
 WaitGroup.prototype.add = function WaitGroupAdd(){
-    this.total++;
+    this.counter++;
 };
 
 WaitGroup.prototype.done = function WaitGroupDone(){
-    this.ready++;
+    this.counter--;
+    if (this.counter && this.counter < 0) {
+        throw new WaitGroupException("WaitGroup negative counter");
+    }
 };
 
 WaitGroup.prototype.wait = function(fn) {
   var self = this;
-  setTimeout(function(){
-    if(self.ready == self.total) return fn();
+  if (self.counter === 0) {
+    return fn();
+  }
+  if (window && window.requestAnimationFrame) {
+    window.requestAnimationFrame(function() {
+      self.wait(fn); 
+    });
+    return;
+  }
+  setTimeout(function() {
     self.wait(fn);
-  }, 0);
+  }, this.TIMEOUT_DURATION);
 };
 
 // Export to node.js
